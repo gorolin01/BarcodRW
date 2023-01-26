@@ -3,8 +3,6 @@ package sample;
 import java.awt.*;
 import java.awt.event.*;
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.*;
@@ -14,6 +12,7 @@ import org.apache.poi.xssf.usermodel.*;
 public class GUI {
     private File excelFile;
     private DefaultTableModel model;
+    private boolean isTableModelListenerEnabled = true;
 
     public void createAndShowGUI() {
         // Create the frame
@@ -36,7 +35,14 @@ public class GUI {
         productField.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    searchAndLoadProduct(productLabel.getText(),columnNames,table);
+
+                    isTableModelListenerEnabled = false;
+                    data[0] = searchAndLoadProduct(productField.getText(),columnNames,table);
+                    model.setDataVector(data[0], columnNames);
+                    model.fireTableDataChanged();
+                    table.setModel(model);
+                    isTableModelListenerEnabled = true;
+
                 }
             }
         });
@@ -63,9 +69,11 @@ public class GUI {
                 JFileChooser fileChooser = new JFileChooser();
                 int returnValue = fileChooser.showOpenDialog(null);
                 if (returnValue == JFileChooser.APPROVE_OPTION) {
+
                     excelFile = fileChooser.getSelectedFile();
                     data[0] = loadDataFromExcel();
                     model.setDataVector(data[0], columnNames);
+
                 }
             }
         });
@@ -89,7 +97,7 @@ public class GUI {
         model.addTableModelListener(new TableModelListener() {
             @Override
             public void tableChanged(TableModelEvent e) {
-                if (e.getType() == TableModelEvent.UPDATE) {
+                if ((e.getType() == TableModelEvent.UPDATE) && isTableModelListenerEnabled) {
                     saveDataToExcel();
                 }
             }
@@ -155,7 +163,7 @@ public class GUI {
         }
     }
 
-    private void searchAndLoadProduct(String productName, String[] columnNames, JTable table) {
+    private Object[][] searchAndLoadProduct(String productName, String[] columnNames, JTable table) {
         try {
             // Open the Excel file
             FileInputStream inputStream = new FileInputStream(excelFile);
@@ -166,16 +174,22 @@ public class GUI {
 
             // Create a new table model
             DefaultTableModel newModel = new DefaultTableModel(new Object[0][2], columnNames);
+            int rowCount = sheet.getPhysicalNumberOfRows();
+            Object[][] data = new Object[rowCount][2];
 
             // Iterate through the rows and add the matching rows to the new model
             for (int i = 0; i < sheet.getPhysicalNumberOfRows(); i++) {
                 XSSFRow row = sheet.getRow(i);
                 String product = row.getCell(0).getStringCellValue();
                 if (product.toLowerCase().contains(productName.toLowerCase())) {
-                    String name = row.getCell(0).getStringCellValue();
+                    /*String name = row.getCell(0).getStringCellValue();
                     String code = row.getCell(1).getStringCellValue();
                     System.out.println(name);
-                    newModel.addRow(new Object[]{name, code});
+                    newModel.addRow(new Object[]{name, code});*/
+                    data[i][0] = row.getCell(0).getStringCellValue();
+                    data[i][1] = row.getCell(1).getStringCellValue();
+                    System.out.println(data[i][0]);
+                    System.out.println(data[i][1]);
                 }
             }
 
@@ -185,11 +199,13 @@ public class GUI {
             // Close the input stream
             inputStream.close();
             workbook.close();
+            return data;
         } catch (IOException e) {
             e.printStackTrace();
             //handle the exception
             JOptionPane.showMessageDialog(null, "Error loading file. Please check the file and try again.", "File Load Error", JOptionPane.ERROR_MESSAGE);
         }
+        return new Object[0][2];
     }
 
 
