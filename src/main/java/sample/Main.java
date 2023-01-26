@@ -13,6 +13,10 @@ public class Main {
 
     public static void main(String[] args) {
 
+        // Create the GUI
+        GUI gui = new GUI();
+        gui.createAndShowGUI();
+
         BARCODE.createExcel("C:\\Users\\Server\\Desktop\\BARCODE.xlsx", 0);
         excel.createExcel("C:\\Users\\Server\\Desktop\\Номенклатура_24.01.23.xlsx", 0);
         Result.createExcel();
