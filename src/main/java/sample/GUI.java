@@ -18,7 +18,7 @@ public class GUI {
         // Create the frame
         JFrame frame = new JFrame("Inventory Manager");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setSize(600, 400);
+        frame.setSize(800, 400);
 
         // Create the input fields
         JLabel barcodeLabel = new JLabel("Barcode:");
@@ -224,10 +224,12 @@ public class GUI {
                 for (int j = 0; j < model.getColumnCount(); j++) {
                     XSSFCell cell = row.createCell(j);
                     Object value = model.getValueAt(i, j);
-                    if (value instanceof Double) {
-                        cell.setCellValue(Double.toString((Double) value));
-                    } else {
-                        cell.setCellValue((String) value);
+                    if(value != null){
+                        if (value instanceof Double) {
+                            cell.setCellValue(Double.toString((Double) value));
+                        } else {
+                            cell.setCellValue((String) value);
+                        }
                     }
                 }
             }
