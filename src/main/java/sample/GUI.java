@@ -34,13 +34,13 @@ public class GUI {
         model = new DefaultTableModel(data[0], columnNames);
         final JTable table = new JTable(model);
 
-        productField.addKeyListener(new KeyAdapter() {
+        barcodeField.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
 
                     isTableModelListenerEnabled = false;
                     resetData();
-                    data[0] = searchAndLoadProduct(productField.getText(),columnNames,table);
+                    data[0] = searchAndLoadProduct(barcodeField.getText(),columnNames,table);
                     model.setDataVector(data[0], columnNames);
                     model.fireTableDataChanged();
                     table.setModel(model);
@@ -75,7 +75,7 @@ public class GUI {
 
                     excelFile = fileChooser.getSelectedFile();
                     data[0] = loadDataFromExcel();
-                    model.setDataVector(data[0], columnNames);
+                    //model.setDataVector(data[0], columnNames);    //загрузает документ в таблицу при старте
 
                 }
             }
@@ -130,27 +130,31 @@ public class GUI {
                 XSSFRow row = sheet.getRow(i);
                 for (int j = 0; j < 2; j++) {
                     XSSFCell cell = row.getCell(j);
-                    switch (cell.getCellType()) {
-                        case NUMERIC:
-                            data[i][j] = cell.getNumericCellValue();
-                            break;
-                        case STRING:
-                            data[i][j] = cell.getStringCellValue();
-                            break;
-                        case BOOLEAN:
-                            data[i][j] = cell.getBooleanCellValue();
-                            break;
-                        case FORMULA:
-                            data[i][j] = cell.getCellFormula();
-                            break;
-                        case BLANK:
-                            data[i][j] = "";
-                            break;
-                        case _NONE:
-                        case ERROR:
-                        default:
-                            data[i][j] = "";
-                            break;
+                    if (cell != null) {
+                        switch (cell.getCellType()) {
+                            case NUMERIC:
+                                data[i][j] = cell.getNumericCellValue();
+                                break;
+                            case STRING:
+                                data[i][j] = cell.getStringCellValue();
+                                break;
+                            case BOOLEAN:
+                                data[i][j] = cell.getBooleanCellValue();
+                                break;
+                            case FORMULA:
+                                data[i][j] = cell.getCellFormula();
+                                break;
+                            case BLANK:
+                                data[i][j] = "";
+                                break;
+                            case _NONE:
+                            case ERROR:
+                            default:
+                                data[i][j] = "";
+                                break;
+                        }
+                    } else {
+                        // обработка случая, когда ячейка не существует
                     }
                 }
             }
@@ -279,6 +283,8 @@ public class GUI {
                         } else {
                             cell.setCellValue((String) data[i][j]);
                         }
+                    }else{
+                        
                     }
                 }
             }*/
