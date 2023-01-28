@@ -13,6 +13,8 @@ public class GUI {
     private File excelFile;
     private DefaultTableModel model;
     private boolean isTableModelListenerEnabled = true;
+    //массив для хранения результатов поиска, третьим аргументом передаем номер строки из исходной таблицы.
+    Object [][] data = new Object[20][3];
 
     public void createAndShowGUI() {
         // Create the frame
@@ -37,6 +39,7 @@ public class GUI {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
 
                     isTableModelListenerEnabled = false;
+                    resetData();
                     data[0] = searchAndLoadProduct(productField.getText(),columnNames,table);
                     model.setDataVector(data[0], columnNames);
                     model.fireTableDataChanged();
@@ -174,10 +177,11 @@ public class GUI {
 
             // Create a new table model
             DefaultTableModel newModel = new DefaultTableModel(new Object[0][2], columnNames);
-            int rowCount = sheet.getPhysicalNumberOfRows();
-            Object[][] data = new Object[rowCount][2];
+            //int rowCount = sheet.getPhysicalNumberOfRows();
+            //Object[][] data = new Object[rowCount][2];
 
             // Iterate through the rows and add the matching rows to the new model
+            int j = 0;
             for (int i = 0; i < sheet.getPhysicalNumberOfRows(); i++) {
                 XSSFRow row = sheet.getRow(i);
                 String product = row.getCell(0).getStringCellValue();
@@ -186,10 +190,15 @@ public class GUI {
                     String code = row.getCell(1).getStringCellValue();
                     System.out.println(name);
                     newModel.addRow(new Object[]{name, code});*/
-                    data[i][0] = row.getCell(0).getStringCellValue();
-                    data[i][1] = row.getCell(1).getStringCellValue();
-                    System.out.println(data[i][0]);
-                    System.out.println(data[i][1]);
+                    data[j][0] = row.getCell(0).getStringCellValue();
+                    data[j][1] = row.getCell(1).getStringCellValue();
+                    data[j][2] = row.getRowNum();
+
+                    System.out.println(data[j][0]);
+                    System.out.println(data[j][1]);
+                    System.out.println(data[j][2]);
+
+                    j++;
                 }
             }
 
@@ -208,18 +217,51 @@ public class GUI {
         return new Object[0][2];
     }
 
-
+    private void resetData(){
+        for(int i = 0; i < data.length; i++){
+            for(int j = 0; j < data[i].length; j++){
+                data[i][j] = null;
+            }
+        }
+    }
 
     private void saveDataToExcel() {
+        if(data[0][0] == null){return;}
         try {
+            FileInputStream inputStream = new FileInputStream(excelFile);
+            XSSFWorkbook workbookFile = new XSSFWorkbook(inputStream);
+
+            // Get the first sheet
+            XSSFSheet sheetFile = workbookFile.getSheetAt(0);
+
+            //----------------------------------------------------------//
+
             // Create a new workbook
             XSSFWorkbook workbook = new XSSFWorkbook();
 
             // Create a new sheet
             XSSFSheet sheet = workbook.createSheet("Inventory");
 
+            //перепишем изменения model в data
+            for(int i = 0; i < model.getRowCount(); i++){
+                for(int j = 0; j < model.getColumnCount(); j++){
+                    data[i][j] = model.getValueAt(i, j);
+                }
+            }
+
             // Iterate through the data and add it to the sheet
             for (int i = 0; i < model.getRowCount(); i++) {
+
+                if(data[i][0] != null){ //если массив пустой - не записываем
+                    //вставляем в старый файл новые скоректированные значения только в те ячейки, которые изменились
+                    sheetFile.getRow((Integer) data[i][2]).getCell(0).setCellValue((String) data[i][0]);
+                    sheetFile.getRow((Integer) data[i][2]).getCell(1).setCellValue((String) data[i][1]);
+                }
+
+            }
+
+            // Iterate through the data and add it to the sheet
+/*            for (int i = 0; i < model.getRowCount(); i++) {
                 XSSFRow row = sheet.createRow(i);
                 for (int j = 0; j < model.getColumnCount(); j++) {
                     XSSFCell cell = row.createCell(j);
@@ -230,15 +272,24 @@ public class GUI {
                         } else {
                             cell.setCellValue((String) value);
                         }
+                    }else{
+                        data = loadDataFromExcel();
+                        if (value instanceof Double) {
+                            cell.setCellValue(Double.toString((Double) data[i][j]));
+                        } else {
+                            cell.setCellValue((String) data[i][j]);
+                        }
                     }
                 }
-            }
+            }*/
 
             // Write the data to the Excel file
             FileOutputStream outputStream = new FileOutputStream(excelFile);
-            workbook.write(outputStream);
+            //workbook.write(outputStream);
+            workbookFile.write(outputStream);
             outputStream.close();
-            workbook.close();
+            workbookFile.close();
+            //workbook.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
