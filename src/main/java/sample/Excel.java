@@ -69,6 +69,28 @@ public class Excel {
 
     }
 
+    public void addCell(int Column, String data){
+
+        int i = 0;
+        while(getCell(i, Column).toString() != ""){
+            i++;
+        }
+
+        setCell(i, Column, data);
+
+    }
+
+    public void addCell(int Column, int data){
+
+        int i = 0;
+        while(getCell(i, Column).toString() != ""){
+            i++;
+        }
+
+        setCell(i, Column, data);
+
+    }
+
     public void Build(String outFilename){
 
         createBookDirectly(WorkbookExcel, outFilename);

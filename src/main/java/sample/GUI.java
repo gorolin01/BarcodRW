@@ -8,13 +8,18 @@ import javax.swing.event.TableModelListener;
 import javax.swing.table.*;
 import java.io.*;
 import org.apache.poi.xssf.usermodel.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 public class GUI {
     private File excelFile;
     private DefaultTableModel model;
     private boolean isTableModelListenerEnabled = true;
     //массив для хранения результатов поиска, третьим аргументом передаем номер строки из исходной таблицы.
-    Object [][] data = new Object[20][3];
+    private Object [][] data = new Object[20][3];
+    private Excel OrderExcel;
 
     public void createAndShowGUI() {
         // Create the frame
@@ -34,34 +39,66 @@ public class GUI {
         model = new DefaultTableModel(data[0], columnNames);
         final JTable table = new JTable(model);
 
+        //слушатель barcodeField
         barcodeField.addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
 
                     isTableModelListenerEnabled = false;
                     resetData();
-                    data[0] = searchAndLoadProduct(barcodeField.getText(),columnNames,table);
+                    data[0] = searchAndLoadProduct(barcodeField.getText(),columnNames,table,0);
+
+                    //если найден один результат, то записываем его в очтет
+                    if(data[0][1][0] == null){
+                        searchProductInOrder(data[0][0]);
+                        try {
+                            sendGet("http://192.168.0.193", "1");
+                        } catch (Exception exception) {
+                            exception.printStackTrace();
+                        }
+                    }
                     model.setDataVector(data[0], columnNames);
                     model.fireTableDataChanged();
                     table.setModel(model);
+                    barcodeField.setText("");   //обнуляем поле после выполнения поиска
                     isTableModelListenerEnabled = true;
 
                 }
             }
         });
 
-        // Create the save button
-        JButton saveButton = new JButton("Save");
-        saveButton.addActionListener(new ActionListener() {
+        //слушатель productField
+        productField.addKeyListener(new KeyAdapter() {
+            public void keyPressed(KeyEvent e) {
+                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+
+                    isTableModelListenerEnabled = false;
+                    resetData();
+                    data[0] = searchAndLoadProduct(productField.getText(),columnNames,table,1);
+                    model.setDataVector(data[0], columnNames);
+                    model.fireTableDataChanged();
+                    table.setModel(model);
+                    productField.setText("");   //обнуляем поле после выполнения поиска
+                    isTableModelListenerEnabled = true;
+
+                }
+            }
+        });
+
+        // Create the create_report button
+        JButton createReportButton = new JButton("CreateReport");
+        createReportButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                String barcode = barcodeField.getText();
-                String product = productField.getText();
+                OrderExcel = new Excel();
+                OrderExcel.createExcel();
+            }
+        });
 
-                // Add the new data to the table
-                model.addRow(new Object[] {barcode, product});
-
-                // Save the data to the Excel spreadsheet
-                saveDataToExcel();
+        // Create the save_report button
+        JButton saveReportButton = new JButton("SaveReport");
+        saveReportButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                OrderExcel.Build("C:\\Users\\User\\Desktop\\OutputReport\\Report+Data.xlsx");
             }
         });
 
@@ -92,8 +129,9 @@ public class GUI {
         mainPanel.setLayout(new BorderLayout());
         mainPanel.add(inputPanel, BorderLayout.NORTH);
         mainPanel.add(tablePane, BorderLayout.CENTER);
-        mainPanel.add(saveButton, BorderLayout.SOUTH);
-        mainPanel.add(loadButton, BorderLayout.WEST);
+        mainPanel.add(createReportButton, BorderLayout.WEST);
+        mainPanel.add(saveReportButton, BorderLayout.EAST);
+        mainPanel.add(loadButton, BorderLayout.SOUTH);
         frame.add(mainPanel);
 
         // Add a TableModelListener to the table's model
@@ -108,6 +146,32 @@ public class GUI {
 
         // Show the GUI
         frame.setVisible(true);
+    }
+
+    //ищет продукт по штрих коду в файле отчета. Если не находит, то добовляет новый. Итерирует количество
+    private void searchProductInOrder(Object [] data){
+
+        String barcod = data[0].toString();
+
+        int row = 0;
+        while((!OrderExcel.getCell(row, 0).toString().equals(barcod)) && (!OrderExcel.getCell(row, 0).toString().equals(""))){
+            row++;
+        }
+        if(OrderExcel.getCell(row, 0).toString().equals(barcod)){
+            int end = OrderExcel.getCell(row, 3).toString().indexOf(".");
+            if(end != -1){
+                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end)) + 1);
+            }else{
+                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString()) + 1);
+            }
+
+        }
+        else{
+            OrderExcel.addCell(0, data[0].toString());
+            OrderExcel.addCell(1, data[1].toString());
+            OrderExcel.addCell(3, 1);
+        }
+
     }
 
     private Object[][] loadDataFromExcel() {
@@ -170,7 +234,8 @@ public class GUI {
         }
     }
 
-    private Object[][] searchAndLoadProduct(String productName, String[] columnNames, JTable table) {
+    private Object[][] searchAndLoadProduct(String productName, String[] columnNames, JTable table, int SearchColumn) {
+        if(productName.equals("")){return new Object[0][2];}
         try {
             // Open the Excel file
             FileInputStream inputStream = new FileInputStream(excelFile);
@@ -188,7 +253,7 @@ public class GUI {
             int j = 0;
             for (int i = 0; i < sheet.getPhysicalNumberOfRows(); i++) {
                 XSSFRow row = sheet.getRow(i);
-                String product = row.getCell(0).getStringCellValue();
+                String product = row.getCell(SearchColumn).getStringCellValue();
                 if (product.toLowerCase().contains(productName.toLowerCase())) {
                     /*String name = row.getCell(0).getStringCellValue();
                     String code = row.getCell(1).getStringCellValue();
@@ -300,5 +365,32 @@ public class GUI {
             e.printStackTrace();
         }
     }
+
+    //метод, который передает через GET запрос строку на определенный url
+    //sendGet("https://www.example.com", "data=value"); - пример
+    public static void sendGet(String url, String query) throws Exception {
+        URL obj = new URL(url + "?" + query);
+        HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+
+        // optional default is GET
+        con.setRequestMethod("GET");
+
+        int responseCode = con.getResponseCode();
+        System.out.println("\nSending 'GET' request to URL : " + url);
+        System.out.println("Response Code : " + responseCode);
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        String inputLine;
+        StringBuffer response = new StringBuffer();
+
+        while ((inputLine = in.readLine()) != null) {
+            response.append(inputLine);
+        }
+        in.close();
+
+        // print result
+        System.out.println(response.toString());
+    }
+
 }
 
