@@ -21,6 +21,9 @@ public class GUI {
     private Object [][] data = new Object[20][3];
     private Excel OrderExcel;
 
+    //const
+    private String OUTPUT_FILE = "C:\\Users\\Server\\Desktop\\res\\Output\\Report+Data.xlsx";   //файл отчета
+
     public void createAndShowGUI() {
         // Create the frame
         JFrame frame = new JFrame("Inventory Manager");
@@ -49,10 +52,16 @@ public class GUI {
                     data[0] = searchAndLoadProduct(barcodeField.getText(),columnNames,table,0);
 
                     //если найден один результат, то записываем его в очтет
-                    if(data[0][1][0] == null){
-                        searchProductInOrder(data[0][0]);
+                    if((data[0][1][0] == null) && (data[0][0][0] != null)){
                         try {
                             sendGet("http://192.168.0.193", "1");
+                            searchProductInOrder(data[0][0]);
+                        } catch (Exception exception) {
+                            exception.printStackTrace();
+                        }
+                    }else{
+                        try {
+                            sendGet("http://192.168.0.193", "0");
                         } catch (Exception exception) {
                             exception.printStackTrace();
                         }
@@ -98,7 +107,7 @@ public class GUI {
         JButton saveReportButton = new JButton("SaveReport");
         saveReportButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                OrderExcel.Build("C:\\Users\\User\\Desktop\\OutputReport\\Report+Data.xlsx");
+                OrderExcel.Build(OUTPUT_FILE);
             }
         });
 
@@ -369,7 +378,7 @@ public class GUI {
     //метод, который передает через GET запрос строку на определенный url
     //sendGet("https://www.example.com", "data=value"); - пример
     public static void sendGet(String url, String query) throws Exception {
-        URL obj = new URL(url + "?" + query);
+        URL obj = new URL(url + "/" + query);
         HttpURLConnection con = (HttpURLConnection) obj.openConnection();
 
         // optional default is GET
@@ -377,7 +386,7 @@ public class GUI {
 
         int responseCode = con.getResponseCode();
         System.out.println("\nSending 'GET' request to URL : " + url);
-        System.out.println("Response Code : " + responseCode);
+        /*System.out.println("Response Code : " + responseCode);
 
         BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
         String inputLine;
@@ -389,7 +398,7 @@ public class GUI {
         in.close();
 
         // print result
-        System.out.println(response.toString());
+        System.out.println(response.toString());*/
     }
 
 }
