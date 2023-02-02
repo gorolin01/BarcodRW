@@ -17,10 +17,10 @@ public class Main {
         GUI gui = new GUI();
         gui.createAndShowGUI();
 
-        BARCODE.createExcel("C:\\Users\\Server\\Desktop\\BARCODE.xlsx", 0);
+        /*BARCODE.createExcel("C:\\Users\\Server\\Desktop\\BARCODE.xlsx", 0);
         excel.createExcel("C:\\Users\\Server\\Desktop\\Номенклатура_24.01.23.xlsx", 0);
         Result.createExcel();
-        stocktaking();
+        stocktaking();*/
 
     }
 

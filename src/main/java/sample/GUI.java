@@ -21,8 +21,10 @@ public class GUI {
     private Object [][] data = new Object[20][3];
     private Excel OrderExcel;
 
+    //настройки
+    private String IP_ARDUINO = "http://192.168.0.193"; //ip адрес ардуино
     //const
-    private String OUTPUT_FILE = "C:\\Users\\Server\\Desktop\\res\\Output\\Report+Data.xlsx";   //файл отчета
+    private String OUTPUT_FILE = "C:\\Users\\User\\Desktop\\OutputReport\\Report+Data.xlsx";   //файл отчета
 
     public void createAndShowGUI() {
         // Create the frame
@@ -37,7 +39,7 @@ public class GUI {
         final JTextField productField = new JTextField(20);
 
         // Create the table
-        final String[] columnNames = {"Barcode", "Product Name"};
+        final String[] columnNames = {"Barcode", "Product Name", "Position", "Articles", "Count"};
         final Object[][][] data = {new Object[0][2]};
         model = new DefaultTableModel(data[0], columnNames);
         final JTable table = new JTable(model);
@@ -54,14 +56,16 @@ public class GUI {
                     //если найден один результат, то записываем его в очтет
                     if((data[0][1][0] == null) && (data[0][0][0] != null)){
                         try {
-                            sendGet("http://192.168.0.193", "1");
+                            //String query = "name=" + data[0][0][1] + ",count=" + data[0][0][0];
+                            String query = "name=" + data[0][0][1] + "&barcod=" + data[0][0][0]; //передаем только наименование товара и бар код
+                            sendGet(IP_ARDUINO, query);
                             searchProductInOrder(data[0][0]);
                         } catch (Exception exception) {
                             exception.printStackTrace();
                         }
                     }else{
                         try {
-                            sendGet("http://192.168.0.193", "0");
+                            sendGet(IP_ARDUINO, "0");   //товар не найден, 0 - код ошибки
                         } catch (Exception exception) {
                             exception.printStackTrace();
                         }
@@ -155,6 +159,8 @@ public class GUI {
 
         // Show the GUI
         frame.setVisible(true);
+
+        TreedGetRequest();
     }
 
     //ищет продукт по штрих коду в файле отчета. Если не находит, то добовляет новый. Итерирует количество
@@ -171,7 +177,7 @@ public class GUI {
             if(end != -1){
                 OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end)) + 1);
             }else{
-                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString()) + 1);
+                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString()) + 1);    //столбец количества товара
             }
 
         }
@@ -179,6 +185,31 @@ public class GUI {
             OrderExcel.addCell(0, data[0].toString());
             OrderExcel.addCell(1, data[1].toString());
             OrderExcel.addCell(3, 1);
+        }
+
+    }
+
+    //принимает бар код строкой и количество товара, которое нужно добавить в отчет к уже существующему там товару
+    private void searchProductInOrder(String barcod, int count){
+
+        int row = 0;
+        while((!OrderExcel.getCell(row, 0).toString().equals(barcod)) && (!OrderExcel.getCell(row, 0).toString().equals(""))){
+            row++;
+        }
+        if(OrderExcel.getCell(row, 0).toString().equals(barcod)){
+            int end = OrderExcel.getCell(row, 3).toString().indexOf(".");
+            if(end != -1){
+                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end)) + count);
+            }else{
+                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString()) + count);    //столбец количества товара
+            }
+
+        }
+        else{
+            //если вдруг такого товара не было в отчете(вообще такого быть не должно!)
+            OrderExcel.addCell(0, data[0].toString());
+            OrderExcel.addCell(1, data[1].toString());
+            OrderExcel.addCell(3, count);
         }
 
     }
@@ -399,6 +430,40 @@ public class GUI {
 
         // print result
         System.out.println(response.toString());*/
+    }
+
+    //создает в отдельном потоке обьект класса GetRequestServer, кторый слушает порт на наличие GET запросов
+    public void TreedGetRequest(){
+
+        int port = 8021;
+        final GetRequestServer server = new GetRequestServer(port);
+        Thread thread = new Thread(server);
+        thread.start();
+
+        Thread serverThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    String requestBody = server.getRequestBody();
+                    if (requestBody != null) {
+                        //тут мы получаем в ответ чего и на сколько нужно увеличить в отчете
+                        String count = requestBody.substring(5, requestBody.indexOf("&barcod="));
+                        String barCod = requestBody.substring(requestBody.indexOf("&barcod=") + 8, requestBody.indexOf("HTTP/1.1") - 1);
+
+                        searchProductInOrder(barCod, Integer.parseInt(count)); //добавляем нужное количество товара в отчет, которое прислала ардуино
+
+                        //тестовый вывод
+                        System.out.println("Request : ");
+                        System.out.println("    Count : " + count);
+                        System.out.println("    Barcod : " + barCod);
+                        server.resetRequestBody();
+                    }
+                }
+
+            }
+        });
+        serverThread.start();
+
     }
 
 }
