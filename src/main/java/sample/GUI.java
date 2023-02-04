@@ -12,19 +12,21 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class GUI {
     private File excelFile;
     private DefaultTableModel model;
     private boolean isTableModelListenerEnabled = true;
     //массив для хранения результатов поиска, третьим аргументом передаем номер строки из исходной таблицы.
-    private Object [][] data = new Object[20][3];
+    private Object [][] data = new Object[20][5];
     private Excel OrderExcel;
 
     //настройки
     private String IP_ARDUINO = "http://192.168.0.193"; //ip адрес ардуино
     //const
-    private String OUTPUT_FILE = "C:\\Users\\User\\Desktop\\OutputReport\\Report+Data.xlsx";   //файл отчета
+    private String OUTPUT_FILE = "C:\\Users\\User\\Desktop\\OutputReport\\";   //файл отчета
 
     public void createAndShowGUI() {
         // Create the frame
@@ -111,7 +113,7 @@ public class GUI {
         JButton saveReportButton = new JButton("SaveReport");
         saveReportButton.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                OrderExcel.Build(OUTPUT_FILE);
+                OrderExcel.Build(OUTPUT_FILE + "Report_" + getCurrentDateTime() + ".xlsx");
             }
         });
 
@@ -163,16 +165,37 @@ public class GUI {
         TreedGetRequest();
     }
 
+    //ищет в файле отчета товар по ШК и возвращает его количество
+    private int searchProductInOrder(String barcode){
+
+        int result = 0;
+        if(!barcode.equals("")) {
+            int row = 0;
+            while ((!OrderExcel.getCell(row, 0).toString().equals(barcode)) && (!OrderExcel.getCell(row, 0).toString().equals(""))) {
+                row++;
+            }
+            if (OrderExcel.getCell(row, 0).toString().equals(barcode)) {
+                int end = OrderExcel.getCell(row, 3).toString().indexOf(".");
+                if(end != -1){
+                    result = Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end));
+                }else{
+                    result = Integer.parseInt(OrderExcel.getCell(row, 3).toString());    //столбец количества товара
+                }
+            }
+        }
+        return result;
+    }
+
     //ищет продукт по штрих коду в файле отчета. Если не находит, то добовляет новый. Итерирует количество
     private void searchProductInOrder(Object [] data){
 
-        String barcod = data[0].toString();
+        String barcode = data[0].toString();
 
         int row = 0;
-        while((!OrderExcel.getCell(row, 0).toString().equals(barcod)) && (!OrderExcel.getCell(row, 0).toString().equals(""))){
+        while((!OrderExcel.getCell(row, 0).toString().equals(barcode)) && (!OrderExcel.getCell(row, 0).toString().equals(""))){
             row++;
         }
-        if(OrderExcel.getCell(row, 0).toString().equals(barcod)){
+        if(OrderExcel.getCell(row, 0).toString().equals(barcode)){
             int end = OrderExcel.getCell(row, 3).toString().indexOf(".");
             if(end != -1){
                 OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end)) + 1);
@@ -190,26 +213,27 @@ public class GUI {
     }
 
     //принимает бар код строкой и количество товара, которое нужно добавить в отчет к уже существующему там товару
-    private void searchProductInOrder(String barcod, int count){
+    private void searchProductInOrder(String barcode, int count){
 
-        int row = 0;
-        while((!OrderExcel.getCell(row, 0).toString().equals(barcod)) && (!OrderExcel.getCell(row, 0).toString().equals(""))){
-            row++;
-        }
-        if(OrderExcel.getCell(row, 0).toString().equals(barcod)){
-            int end = OrderExcel.getCell(row, 3).toString().indexOf(".");
-            if(end != -1){
-                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end)) + count);
-            }else{
-                OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString()) + count);    //столбец количества товара
+        if(!barcode.equals("")) {
+            int row = 0;
+            while ((!OrderExcel.getCell(row, 0).toString().equals(barcode)) && (!OrderExcel.getCell(row, 0).toString().equals(""))) {
+                row++;
             }
+            if (OrderExcel.getCell(row, 0).toString().equals(barcode)) {
+                int end = OrderExcel.getCell(row, 3).toString().indexOf(".");
+                if (end != -1) {
+                    OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString().substring(0, end)) + count);
+                } else {
+                    OrderExcel.setCell(row, 3, Integer.parseInt(OrderExcel.getCell(row, 3).toString()) + count);    //столбец количества товара
+                }
 
-        }
-        else{
-            //если вдруг такого товара не было в отчете(вообще такого быть не должно!)
-            OrderExcel.addCell(0, data[0].toString());
-            OrderExcel.addCell(1, data[1].toString());
-            OrderExcel.addCell(3, count);
+            } else {
+                //если вдруг такого товара не было в отчете(вообще такого быть не должно!)
+                OrderExcel.addCell(0, data[0].toString());
+                OrderExcel.addCell(1, data[1].toString());
+                OrderExcel.addCell(3, count);
+            }
         }
 
     }
@@ -302,10 +326,13 @@ public class GUI {
                     data[j][0] = row.getCell(0).getStringCellValue();
                     data[j][1] = row.getCell(1).getStringCellValue();
                     data[j][2] = row.getRowNum();
+                    data[j][4] = searchProductInOrder(data[j][0].toString());
 
                     System.out.println(data[j][0]);
                     System.out.println(data[j][1]);
                     System.out.println(data[j][2]);
+                    System.out.println(data[j][4]);
+                    System.out.println(">>>>>>>>>>>>>>>>>>>>>");
 
                     j++;
                 }
@@ -404,6 +431,14 @@ public class GUI {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public static String getCurrentDateTime() {
+        SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+        Date date = new Date();
+        String DateTime = formatter.format(date);
+        DateTime = DateTime.replaceAll("/", "_").replaceAll(":", ";");
+        return DateTime;
     }
 
     //метод, который передает через GET запрос строку на определенный url
