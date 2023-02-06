@@ -59,7 +59,7 @@ public class GUI {
                     if((data[0][1][0] == null) && (data[0][0][0] != null)){
                         try {
                             //String query = "name=" + data[0][0][1] + ",count=" + data[0][0][0];
-                            String query = "name=" + data[0][0][1] + "&barcod=" + data[0][0][0]; //передаем только наименование товара и бар код
+                            String query = "name=" + data[0][0][1].toString() + "&barcod=" + data[0][0][0].toString(); //передаем только наименование товара и бар код
                             sendGet(IP_ARDUINO, query);
                             searchProductInOrder(data[0][0]);
                         } catch (Exception exception) {
@@ -230,8 +230,8 @@ public class GUI {
 
             } else {
                 //если вдруг такого товара не было в отчете(вообще такого быть не должно!)
-                OrderExcel.addCell(0, data[0].toString());
-                OrderExcel.addCell(1, data[1].toString());
+                OrderExcel.addCell(0, data[row][0].toString());
+                OrderExcel.addCell(1, data[row][1].toString());
                 OrderExcel.addCell(3, count);
             }
         }
