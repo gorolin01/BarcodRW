@@ -24,7 +24,7 @@ public class GUI {
     private Excel OrderExcel;
 
     //настройки
-    private String IP_ARDUINO = "http://192.168.0.193"; //ip адрес ардуино
+    private String IP_ARDUINO = "http://192.168.0.137"; //ip адрес ардуино
     //const
     private String OUTPUT_FILE = "C:\\Users\\User\\Desktop\\OutputReport\\";   //файл отчета
 
