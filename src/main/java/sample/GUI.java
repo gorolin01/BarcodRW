@@ -16,12 +16,15 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class GUI {
-    private File excelFile;
+    private File excelFile;         //файл с штрих кодами
+    private File excelFilePrice;    //файл с ценами
+    private XSSFWorkbook WBPrice;
     private DefaultTableModel model;
     private boolean isTableModelListenerEnabled = true;
     //массив для хранения результатов поиска, третьим аргументом передаем номер строки из исходной таблицы.
     private Object [][] data = new Object[20][5];
     private Excel OrderExcel;
+    private JCheckBox transmitPrice;
 
     //настройки
     private String IP_ARDUINO = "http://192.168.0.137"; //ip адрес ардуино
@@ -59,7 +62,15 @@ public class GUI {
                     if((data[0][1][0] == null) && (data[0][0][0] != null)){
                         try {
                             //String query = "name=" + data[0][0][1] + ",count=" + data[0][0][0];
-                            String query = "name=" + data[0][0][1].toString() + "&barcod=" + data[0][0][0].toString(); //передаем только наименование товара и бар код
+                            //ТУТ нужно добавить третий передоваемый параметр (цена)
+                            String query = "";
+                            if(transmitPrice.isSelected()){
+                                query = "name=" + data[0][0][1].toString() + "&barcod=" + data[0][0][0].toString() + "&price=" + getPrice(data[0][0][1].toString()); //передаем только наименование товара, бар код и цену
+                            }else{
+                                query = "name=" + data[0][0][1].toString() + "&barcod=" + data[0][0][0].toString(); //передаем только наименование товара и бар код
+                            }
+                            //ОТЛАДКА
+                            System.out.println(query);
                             sendGet(IP_ARDUINO, query);
                             searchProductInOrder(data[0][0]);
                         } catch (Exception exception) {
@@ -133,12 +144,34 @@ public class GUI {
             }
         });
 
+        // Create the loadPrice button
+        JButton loadPriceButton = new JButton("Load Price");
+        loadPriceButton.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                JFileChooser fileChooser = new JFileChooser();
+                int returnValue = fileChooser.showOpenDialog(null);
+                if (returnValue == JFileChooser.APPROVE_OPTION) {
+
+                    excelFilePrice = fileChooser.getSelectedFile();
+                    loadPrice();
+                    //data[0] = loadDataFromExcel();
+
+                }
+            }
+        });
+
+        transmitPrice = new JCheckBox("Transmit Price");
+
         // Add the input fields and table to the GUI
         JPanel inputPanel = new JPanel();
+        JPanel bottomPanel = new JPanel();
         inputPanel.add(barcodeLabel);
         inputPanel.add(barcodeField);
         inputPanel.add(productLabel);
         inputPanel.add(productField);
+        bottomPanel.add(loadButton);
+        bottomPanel.add(loadPriceButton);
+        bottomPanel.add(transmitPrice);
         JScrollPane tablePane = new JScrollPane(table);
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BorderLayout());
@@ -146,7 +179,7 @@ public class GUI {
         mainPanel.add(tablePane, BorderLayout.CENTER);
         mainPanel.add(createReportButton, BorderLayout.WEST);
         mainPanel.add(saveReportButton, BorderLayout.EAST);
-        mainPanel.add(loadButton, BorderLayout.SOUTH);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
         frame.add(mainPanel);
 
         // Add a TableModelListener to the table's model
@@ -439,6 +472,49 @@ public class GUI {
         String DateTime = formatter.format(date);
         DateTime = DateTime.replaceAll("/", "_").replaceAll(":", ";");
         return DateTime;
+    }
+
+    //загружает файл с ценами
+    private void loadPrice(){
+        try {
+            // Open the Excel file
+            FileInputStream inputStream = new FileInputStream(excelFilePrice);
+            WBPrice = new XSSFWorkbook(inputStream);
+
+            // Close the input stream
+            inputStream.close();
+            //WBPrice.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            //handle the exception
+            JOptionPane.showMessageDialog(null, "Error loading file. Please check the file and try again.", "File Load Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    //метод ищет товар по нзванию в файле с ценами возвращает цену
+    private String getPrice(String productName){
+        //номер столбца с ценой
+        int NPrice = 4;
+
+        //номер столбца с наименованием
+        int NName = 0;
+
+        String res = "";
+        // Get the first sheet
+        XSSFSheet sheet = WBPrice.getSheetAt(0);
+
+        // Iterate through the rows and add the matching rows to the new model
+        for (int i = 0; i < sheet.getPhysicalNumberOfRows(); i++) {
+            XSSFRow row = sheet.getRow(i);
+            String product = row.getCell(NName).getStringCellValue();
+            if (product.toLowerCase().contains(productName.toLowerCase())) {
+                res = Double.toString(row.getCell(NPrice).getNumericCellValue());
+                break;
+            }
+        }
+
+        //WBPrice.close();
+        return res;
     }
 
     //метод, который передает через GET запрос строку на определенный url
