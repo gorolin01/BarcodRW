@@ -11,6 +11,8 @@ import org.apache.poi.xssf.usermodel.*;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -25,6 +27,8 @@ public class GUI {
     private Object [][] data = new Object[20][5];
     private Excel OrderExcel;
     private JCheckBox transmitPrice;
+    //private static ProgressBar progressTransmitBar;
+    //private static ProcessSpinnerBar processSpinnerBar;
 
     //настройки
     private String IP_ARDUINO = "http://192.168.0.137"; //ip адрес ардуино
@@ -161,6 +165,8 @@ public class GUI {
         });
 
         transmitPrice = new JCheckBox("Transmit Price");
+        //progressTransmitBar = new ProgressBar();
+        //processSpinnerBar = new ProcessSpinnerBar();
 
         // Add the input fields and table to the GUI
         JPanel inputPanel = new JPanel();
@@ -172,6 +178,8 @@ public class GUI {
         bottomPanel.add(loadButton);
         bottomPanel.add(loadPriceButton);
         bottomPanel.add(transmitPrice);
+        //bottomPanel.add(progressTransmitBar.getPanel());  //не работает! Не обновляет JFrame во время выполнения кода слушателя(не отображает промежуточные этапы).
+        //bottomPanel.add(processSpinnerBar.getPanel());    //не работает!
         JScrollPane tablePane = new JScrollPane(table);
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BorderLayout());
@@ -521,28 +529,39 @@ public class GUI {
 
     //метод, который передает через GET запрос строку на определенный url
     //sendGet("https://www.example.com", "data=value"); - пример
-    public static void sendGet(String url, String query) throws Exception {
-        URL obj = new URL(url + "/" + query);
-        HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+    public static void sendGet(String url, String query) {
+        try {
 
-        // optional default is GET
-        con.setRequestMethod("GET");
+            URL obj = new URL(url + "/" + query);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
 
-        int responseCode = con.getResponseCode();
-        System.out.println("\nSending 'GET' request to URL : " + url);
-        /*System.out.println("Response Code : " + responseCode);
+            // optional default is GET
+            con.setRequestMethod("GET");
 
-        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        String inputLine;
-        StringBuffer response = new StringBuffer();
+            int responseCode = con.getResponseCode();
+            System.out.println("\nSending 'GET' request to URL : " + url);
+            /*System.out.println("Response Code : " + responseCode);
 
-        while ((inputLine = in.readLine()) != null) {
-            response.append(inputLine);
+            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            // print result
+            System.out.println(response.toString());*/
+
+        } catch (ProtocolException e) {
+            e.printStackTrace();
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+            //добавить обновление статуса передачи
         }
-        in.close();
-
-        // print result
-        System.out.println(response.toString());*/
     }
 
     //создает в отдельном потоке обьект класса GetRequestServer, кторый слушает порт на наличие GET запросов
