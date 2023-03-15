@@ -506,10 +506,12 @@ public class GUI {
         // Iterate through the rows and add the matching rows to the new model
         for (int i = 0; i < sheet.getPhysicalNumberOfRows(); i++) {
             XSSFRow row = sheet.getRow(i);
-            String product = row.getCell(NName).getStringCellValue();
-            if (product.toLowerCase().contains(productName.toLowerCase())) {
-                res = Double.toString(row.getCell(NPrice).getNumericCellValue());
-                break;
+            if(row.getCell(NName) != null){     // пропускает пустые строки с наименованием
+                String product = row.getCell(NName).getStringCellValue();
+                if (product.toLowerCase().contains(productName.toLowerCase())) {
+                    res = Double.toString(row.getCell(NPrice).getNumericCellValue());
+                    break;
+                }
             }
         }
 
